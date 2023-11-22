@@ -1,0 +1,47 @@
+---
+- name: Automate Sprint Release
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    nexus_base_url: "https://nexus.example.com/repository"
+    nexus_repository_path: "models"
+    model_zip_file: "model_20221128-170018.zip"
+    extraction_folder: "/Users/Model"
+    oc_project_name: "project_name"
+    oc_project_path: "/app/project_path"
+
+  tasks:
+    - name: Download Model ZIP file from Nexus
+      command: "curl -o {{ extraction_folder }}/{{ model_zip_file }} {{ nexus_base_url }}/{{ nexus_repository_path }}/{{ model_zip_file }}"
+      args:
+        creates: "{{ extraction_folder }}/{{ model_zip_file }}"
+
+    - name: Extract Model ZIP file
+      ansible.builtin.unarchive:
+        src: "{{ extraction_folder }}/{{ model_zip_file }}"
+        dest: "{{ extraction_folder }}"
+        remote_src: true
+        creates: "{{ extraction_folder }}/{{ model_zip_file|replace('.zip', '') }}"
+
+    - name: Login to OpenShift
+      command: "oc login"
+      args:
+        cmd: "oc login"
+
+    - name: Switch to the test project
+      command: "oc project {{ oc_project_name }}"
+
+    - name: Verify the path
+      command: "pwd"
+      args:
+        chdir: "{{ extraction_folder }}/{{ model_zip_file|replace('.zip', '') }}"
+
+    - name: List the pods
+      command: "oc get pods"
+      register: pods_output
+
+    - name: Copy the model file to the first pod
+      shell: "oc cp ./{{ model_zip_file|replace('.zip', '') }} {{ pods_output.stdout_lines[1].split()[0] }}:{{ oc_project_path }}"
+      args:
+        chdir: "{{ extraction_folder }}"
