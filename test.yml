@@ -25,9 +25,9 @@
         creates: "{{ extraction_folder }}/{{ model_zip_file|replace('.zip', '') }}"
 
     - name: Login to OpenShift
-      command: "oc login"
-      args:
-        cmd: "oc login"
+ tasks:
+    - name: Login to OpenShift using Token
+      ansible.builtin.command: "oc login --server={{ os_server }} --token={{ lookup('ansible.builtin.credentials', 'your_oc_credential', wantlist=True).secret }}"
 
     - name: Switch to the test project
       command: "oc project {{ oc_project_name }}"
